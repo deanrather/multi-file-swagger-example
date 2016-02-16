@@ -1,7 +1,24 @@
 swagger: '2.0'
+
+host: sb2.coatesdigital.com.au:3000
+
+schemes:
+  - http
+  - https
+
+basePath: /api/v0
+
+consumes:
+  - application/vnd.api+json
+
+produces:
+  - application/vnd.api+json
+
 info:
   $ref: ./info/index.yaml
-paths:
-  $ref: ./paths/index.yaml
+
 definitions:
   $ref: ./definitions/index.yaml
+
+paths:
+  $ref: ./paths/index.yaml

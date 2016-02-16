@@ -1,2 +1,118 @@
-version: 0.0.0
-title: Simple API
+title: Switchboard 2 API
+version: "0.0.1"
+description: |
+
+  _What's this document?_
+
+  This document specifies what resources are provided by the Switchboard II API, how to use the API, and where to find more information.
+
+  _What is Switchboard II?_
+
+  The SBIIa API provides access to SBI's HQ. It provides all the required functionality to build a new UI replacing the existing SBI HQ.
+  The API Server is installed on an existing SBI HQ, interacting with the existing system (MySQL, FS, and CLI) allowing users to use SB HQ via either the old v1 API/UI or the new v2 API/UI.
+  In the future (SBII Alpha Iteration #2), when new features are added, they may not be compatible with SBI, but they will not break SBI from functioning.
+  Futher down the line (SBIII), the underlying storage may be replaced (eg to MongoDB), and SBI support will cease.
+
+  _What isn't Switchboard II?_
+
+  Switchboard II is _not_ Switchboard III (formerly Switchboard II Beta, Switchboard II Alpha Phase 2).
+  Switchboard II will _not_ include any functionality not compatible with the existing HQ and DB. - eg. "local at HQ".
+
+  ### Scope
+
+  _What the API does provide_
+
+  - Use the existing Switchboard One MySQL DB for storage and retrieval
+  - Provide 100% of the functionality required to build an alternative HQ UI
+      - Including:
+          - Content (now _assets_)
+          - Channels
+              - Screens
+              - Schedules
+                  - Schedule Items (now _timeslots_)
+                  - Schedule Item Content (now _timeslot's assets_)
+          - Data Sources (now _Datasources_)
+          - Locations
+      - Not including
+          - Dashboard
+  - Use standard RESTful conventions
+      - The goal is that we can publish the API for third parties to use
+
+  _What it doesn't provide:_
+
+  - Modify the existing DB Schema in any way that makes it incompatible with existing Switchboard One application.
+    - i.e, we can add things if we need to - but not if they're required for the regular operation of SB
+  - Provide functionality required for the local UI
+  - Rate-limiting
+  - User Authentication levels (either you can login and do everything, or you can't login)
+  - Batch operations
+
+  These things may be added in future versions of the SBII API, or in the SBIII API.
+
+
+  ---
+
+
+  ## Table of Contents
+
+  - Overview
+    - Summary
+      - Scope
+    - Table of Contents
+    - Resource Summary
+    - API Summary
+    - Nomenclature
+    - References
+    - Document Version
+  - API
+    - Schema
+    - Parameters
+    - Root Endpoint
+    - Searching & Pagination
+    - Client Errors
+    - HTTP Redirects
+    - HTTP Verbs
+    - Authentication
+    - Hypermedia
+    - User Agent Required
+    - Conditional requests
+    - Cross Origin Resource Sharing
+    - JSONP Callbacks
+    - Real-Time API updates
+  - [Resources]
+      - [each]
+          - Description
+              - Summary
+              - Examples
+          - Attributes
+              - [each]
+                  - Description
+                  - Validation
+
+
+  ---
+
+
+  ## Resource Summary
+
+  - `Assets` (formerly _Content_) are media (images, audio, videos, or websites) designed to be displayed on-screen. They may be promotional advertisments; like posters, videos; like commercials, or data-driven; like menuboards with dynamic pricing and item lists. They have a _Mime_ and may have _Tags_.
+  - `Channels` are logical groupings of _Screens_, and contain _Schedules_. Eg. you might make a "6-screen horizontal" channel to schedule assets to be played across 6 horizontal screens. They may have _Tags_.
+    - `Screens` represent physical screens, each with a resolution and orientation.
+    - `Schedules` are like a calendar of _Timeslots_, defining which content should be playing on which screen at which time. A Channel may have several Schedules (eg Jan, Feb, March), and will play from the _Active Schedule_.
+      - `Timeslots` (formerly _Schedule Items_) are the building blocks of a schedule. You may have a 9am-10pm timeslot which plays the "Beef" asset.
+        - `Default Asset` is the asset that will play in this timeslot, unless the Local UI overwrites it with one of the other _Available Assets_.
+        - `Available Assets` are other assets which are available to be played in this timeslot.
+  - `Datasources` (formerly _Data Sources_) are resources uploaded in `.csv` format. They can contain `metadata` as defined in `Data Sources.md`. _Assets_ can access _Datasources_ to use their data.
+    - `Attributes` (formerly _Columns_) are the properties that Datasource contains. eg Pricing.csv may contain ID, Name, and Price.
+    - `Records` (formerly _Rows_) are the items data in the Datasource. Each record contains a _Cell_ with data for each of the Datasource's Attributes.
+      - `Cells` are the data that a Record has for it's Attribute. Eg a Record in Pricing.csv would have a Cell for each of it's ID, Name, and Price.
+  - `Locations` are environments representing separate physical networks. Multiple Channels can be assigned to a Location. Locations also have a _Timezone_, they may have a _Publication_, and they may have _Tags_.
+  - `Mimes` (formerly _Content Type_) define the type of the Asset. eg: Image, Audio, Video.
+  - `Publications` (loosely formerly _Packages_) are snapshots of the state of HQ's Schedules and Assets at a given time. They are assigned to Locations.
+  - `Reports` (loosely formerly _Devices_) are generated by Locations and sent to HQ for the purpose of knowing whether or not a Location has applied it's assigned Publication.
+  - `Sessions` represent each client accessing the API. If a session successfully logs in, it will be assigned to a _User_.
+  - `Tags` (formerly _Content Groups_, _Channel Groups_, and _Location Groups_) are arbitrary labels users can assign to Assets, Channels, and Locations.
+  - `Timezones` are timezones available to be assigned to Locations.
+  - `Users` are user accounts who can login and access the API.
+
+  ---

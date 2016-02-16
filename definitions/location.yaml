@@ -1,0 +1,59 @@
+type: object
+oneOf:
+  $ref: http://jsonapi.org/schema#/definitions/resource
+properties:
+
+
+  type:
+    type: string
+    description: "location"
+
+
+  id:
+    type: id
+    description: Location's ID
+
+
+  attributes:
+    type: object
+    properties:
+
+      name:
+        type: string
+        description: Name of the location
+
+      code:
+        type: string
+        description: Code of the location
+
+
+  links:
+    type: object
+    properties:
+
+      collection:
+          type: url
+          description: API address of collection in which this resource belongs.
+      self:
+          type: url
+          description: API address of this resource.
+      manage:
+          type: url
+          description: UI address to manage this location.
+
+
+  relationships:
+    type: object
+    properties:
+
+      publication:
+        $ref: '#/definitions/relationshipToOne'
+
+      timezone:
+        $ref: '#/definitions/relationshipToOne'
+
+      channels:
+        $ref: '#/definitions/relationshipToMany'
+
+      tags:
+        $ref: '#/definitions/relationshipToMany'

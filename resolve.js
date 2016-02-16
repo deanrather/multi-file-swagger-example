@@ -12,5 +12,7 @@ var options = {
   }
 };
 resolve(root, options).then(function (results) {
-  console.log(JSON.stringify(results.resolved, null, 2));
+  var out = JSON.stringify(results.resolved, null, 2);
+  console.log(out);
+  fs.writeFileSync('dist/def.yaml', out);
 });

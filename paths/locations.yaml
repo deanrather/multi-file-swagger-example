@@ -1,0 +1,7 @@
+get:
+  responses:
+    200:
+      schema:
+        type: array
+        items:
+          $ref: "#/definitions/location"

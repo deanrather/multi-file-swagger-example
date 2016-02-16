@@ -1,2 +1,67 @@
-User:
-  $ref: ./User.yaml
+
+
+attributes:
+  $ref: http://jsonapi.org/schema#/definitions/attributes
+
+success:
+  $ref: http://jsonapi.org/schema#/definitions/success
+
+relationships:
+  $ref: http://jsonapi.org/schema#/definitions/relationships
+
+links:
+  $ref: http://jsonapi.org/schema#/definitions/links
+
+meta:
+  $ref: http://jsonapi.org/schema#/definitions/meta
+
+relationshipToOne:
+  $ref: http://jsonapi.org/schema#/definitions/relationshipToOne
+
+relationshipToMany:
+  $ref: http://jsonapi.org/schema#/definitions/relationshipToMany
+
+link:
+  $ref: http://jsonapi.org/schema#/definitions/link
+
+empty:
+  $ref: http://jsonapi.org/schema#/definitions/empty
+
+linkage:
+  $ref: http://jsonapi.org/schema#/definitions/linkage
+
+data:
+  $ref: http://jsonapi.org/schema#/definitions/data
+
+resource:
+  $ref: http://jsonapi.org/schema#/definitions/resource
+
+pagination:
+  $ref: http://jsonapi.org/schema#/definitions/pagination
+
+jsonapi:
+  $ref: http://jsonapi.org/schema#/definitions/jsonapi
+
+
+
+
+
+location:
+  $ref: ./location.yaml
+
+response_one:
+  oneOf:
+    $ref: http://jsonapi.org/schema#/definitions/success
+  properties:
+    links:
+      oneOf:
+        $ref: #/definitions/links
+    data:
+      type: object
+
+response_many:
+    oneOf:
+      $ref: http://jsonapi.org/schema#/definitions/success
+    properties:
+      data:
+        type: array

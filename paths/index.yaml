@@ -1,4 +1,8 @@
-/foo:
-  $ref: ./foo.yaml
-/bar:
-  $ref: ./bar.yaml
+/channels:
+  $ref: ./channels.yaml
+
+/locations:
+  $ref: ./locations.yaml
+
+/locations/{location_id}:
+  $ref: ./locations.yaml

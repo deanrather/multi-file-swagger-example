@@ -1,0 +1,523 @@
+{
+  "swagger": "2.0",
+  "host": "sb2.coatesdigital.com.au:3000",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "basePath": "/api/v0",
+  "consumes": [
+    "application/vnd.api+json"
+  ],
+  "produces": [
+    "application/vnd.api+json"
+  ],
+  "info": {
+    "title": "Switchboard 2 API",
+    "version": "0.0.1",
+    "description": "\n_What's this document?_\n\nThis document specifies what resources are provided by the Switchboard II API, how to use the API, and where to find more information.\n\n_What is Switchboard II?_\n\nThe SBIIa API provides access to SBI's HQ. It provides all the required functionality to build a new UI replacing the existing SBI HQ.\nThe API Server is installed on an existing SBI HQ, interacting with the existing system (MySQL, FS, and CLI) allowing users to use SB HQ via either the old v1 API/UI or the new v2 API/UI.\nIn the future (SBII Alpha Iteration #2), when new features are added, they may not be compatible with SBI, but they will not break SBI from functioning.\nFuther down the line (SBIII), the underlying storage may be replaced (eg to MongoDB), and SBI support will cease.\n\n_What isn't Switchboard II?_\n\nSwitchboard II is _not_ Switchboard III (formerly Switchboard II Beta, Switchboard II Alpha Phase 2).\nSwitchboard II will _not_ include any functionality not compatible with the existing HQ and DB. - eg. \"local at HQ\".\n\n### Scope\n\n_What the API does provide_\n\n- Use the existing Switchboard One MySQL DB for storage and retrieval\n- Provide 100% of the functionality required to build an alternative HQ UI\n    - Including:\n        - Content (now _assets_)\n        - Channels\n            - Screens\n            - Schedules\n                - Schedule Items (now _timeslots_)\n                - Schedule Item Content (now _timeslot's assets_)\n        - Data Sources (now _Datasources_)\n        - Locations\n    - Not including\n        - Dashboard\n- Use standard RESTful conventions\n    - The goal is that we can publish the API for third parties to use\n\n_What it doesn't provide:_\n\n- Modify the existing DB Schema in any way that makes it incompatible with existing Switchboard One application.\n  - i.e, we can add things if we need to - but not if they're required for the regular operation of SB\n- Provide functionality required for the local UI\n- Rate-limiting\n- User Authentication levels (either you can login and do everything, or you can't login)\n- Batch operations\n\nThese things may be added in future versions of the SBII API, or in the SBIII API.\n\n\n---\n\n\n## Table of Contents\n\n- Overview\n  - Summary\n    - Scope\n  - Table of Contents\n  - Resource Summary\n  - API Summary\n  - Nomenclature\n  - References\n  - Document Version\n- API\n  - Schema\n  - Parameters\n  - Root Endpoint\n  - Searching & Pagination\n  - Client Errors\n  - HTTP Redirects\n  - HTTP Verbs\n  - Authentication\n  - Hypermedia\n  - User Agent Required\n  - Conditional requests\n  - Cross Origin Resource Sharing\n  - JSONP Callbacks\n  - Real-Time API updates\n- [Resources]\n    - [each]\n        - Description\n            - Summary\n            - Examples\n        - Attributes\n            - [each]\n                - Description\n                - Validation\n\n\n---\n\n\n## Resource Summary\n\n- `Assets` (formerly _Content_) are media (images, audio, videos, or websites) designed to be displayed on-screen. They may be promotional advertisments; like posters, videos; like commercials, or data-driven; like menuboards with dynamic pricing and item lists. They have a _Mime_ and may have _Tags_.\n- `Channels` are logical groupings of _Screens_, and contain _Schedules_. Eg. you might make a \"6-screen horizontal\" channel to schedule assets to be played across 6 horizontal screens. They may have _Tags_.\n  - `Screens` represent physical screens, each with a resolution and orientation.\n  - `Schedules` are like a calendar of _Timeslots_, defining which content should be playing on which screen at which time. A Channel may have several Schedules (eg Jan, Feb, March), and will play from the _Active Schedule_.\n    - `Timeslots` (formerly _Schedule Items_) are the building blocks of a schedule. You may have a 9am-10pm timeslot which plays the \"Beef\" asset.\n      - `Default Asset` is the asset that will play in this timeslot, unless the Local UI overwrites it with one of the other _Available Assets_.\n      - `Available Assets` are other assets which are available to be played in this timeslot.\n- `Datasources` (formerly _Data Sources_) are resources uploaded in `.csv` format. They can contain `metadata` as defined in `Data Sources.md`. _Assets_ can access _Datasources_ to use their data.\n  - `Attributes` (formerly _Columns_) are the properties that Datasource contains. eg Pricing.csv may contain ID, Name, and Price.\n  - `Records` (formerly _Rows_) are the items data in the Datasource. Each record contains a _Cell_ with data for each of the Datasource's Attributes.\n    - `Cells` are the data that a Record has for it's Attribute. Eg a Record in Pricing.csv would have a Cell for each of it's ID, Name, and Price.\n- `Locations` are environments representing separate physical networks. Multiple Channels can be assigned to a Location. Locations also have a _Timezone_, they may have a _Publication_, and they may have _Tags_.\n- `Mimes` (formerly _Content Type_) define the type of the Asset. eg: Image, Audio, Video.\n- `Publications` (loosely formerly _Packages_) are snapshots of the state of HQ's Schedules and Assets at a given time. They are assigned to Locations.\n- `Reports` (loosely formerly _Devices_) are generated by Locations and sent to HQ for the purpose of knowing whether or not a Location has applied it's assigned Publication.\n- `Sessions` represent each client accessing the API. If a session successfully logs in, it will be assigned to a _User_.\n- `Tags` (formerly _Content Groups_, _Channel Groups_, and _Location Groups_) are arbitrary labels users can assign to Assets, Channels, and Locations.\n- `Timezones` are timezones available to be assigned to Locations.\n- `Users` are user accounts who can login and access the API.\n\n---\n"
+  },
+  "definitions": {
+    "attributes": {
+      "description": "Members of the attributes object (\"attributes\") represent information about the resource object in which it's defined.",
+      "type": "object",
+      "patternProperties": {
+        "^(?!relationships$|links$)\\w[-\\w_]*$": {
+          "description": "Attributes may contain any valid JSON value."
+        }
+      },
+      "additionalProperties": false
+    },
+    "success": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/data"
+        },
+        "included": {
+          "description": "To reduce the number of HTTP requests, servers **MAY** allow responses that include related resources along with the requested primary resources. Such responses are called \"compound documents\".",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/resource"
+          },
+          "uniqueItems": true
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        },
+        "links": {
+          "description": "Link members related to the primary data.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/links"
+            },
+            {
+              "$ref": "#/definitions/pagination"
+            }
+          ]
+        },
+        "jsonapi": {
+          "$ref": "#/definitions/jsonapi"
+        }
+      },
+      "additionalProperties": false
+    },
+    "relationships": {
+      "description": "Members of the relationships object (\"relationships\") represent references from the resource object in which it's defined to other resource objects.",
+      "type": "object",
+      "patternProperties": {
+        "^\\w[-\\w_]*$": {
+          "properties": {
+            "links": {
+              "$ref": "#/definitions/links"
+            },
+            "data": {
+              "description": "Member, whose value represents \"resource linkage\".",
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/relationshipToOne"
+                },
+                {
+                  "$ref": "#/definitions/relationshipToMany"
+                }
+              ]
+            },
+            "meta": {
+              "$ref": "#/definitions/meta"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "links": {
+      "description": "A resource object **MAY** contain references to other resource objects (\"relationships\"). Relationships may be to-one or to-many. Relationships can be specified by including a member in a resource's links object.",
+      "type": "object",
+      "properties": {
+        "self": {
+          "description": "A `self` member, whose value is a URL for the relationship itself (a \"relationship URL\"). This URL allows the client to directly manipulate the relationship. For example, it would allow a client to remove an `author` from an `article` without deleting the people resource itself.",
+          "type": "string",
+          "format": "uri"
+        },
+        "related": {
+          "$ref": "#/definitions/link"
+        }
+      },
+      "additionalProperties": true
+    },
+    "meta": {
+      "description": "Non-standard meta-information that can not be represented as an attribute or relationship.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "relationshipToOne": {
+      "description": "References to other resource objects in a to-one (\"relationship\"). Relationships can be specified by including a member in a resource's links object.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/empty"
+        },
+        {
+          "$ref": "#/definitions/linkage"
+        }
+      ]
+    },
+    "relationshipToMany": {
+      "description": "An array of objects each containing \"type\" and \"id\" members for to-many relationships.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/linkage"
+      },
+      "uniqueItems": true
+    },
+    "link": {
+      "description": "A link **MUST** be represented as either: a string containing the link's URL or a link object.",
+      "oneOf": [
+        {
+          "description": "A string containing the link's URL.",
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "object",
+          "required": [
+            "href"
+          ],
+          "properties": {
+            "href": {
+              "description": "A string containing the link's URL.",
+              "type": "string",
+              "format": "uri"
+            },
+            "meta": {
+              "$ref": "#/definitions/meta"
+            }
+          }
+        }
+      ]
+    },
+    "empty": {
+      "description": "Describes an empty to-one relationship.",
+      "type": "null"
+    },
+    "linkage": {
+      "description": "The \"type\" and \"id\" to non-empty members.",
+      "type": "object",
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      },
+      "additionalProperties": false
+    },
+    "data": {
+      "description": "The document's \"primary data\" is a representation of the resource or collection of resources targeted by a request.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/resource"
+        },
+        {
+          "description": "An array of resource objects, an array of resource identifier objects, or an empty array ([]), for requests that target resource collections.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/resource"
+          },
+          "uniqueItems": true
+        },
+        {
+          "description": "null if the request is one that might correspond to a single resource, but doesn't currently.",
+          "type": "null"
+        }
+      ]
+    },
+    "resource": {
+      "description": "\"Resource objects\" appear in a JSON API document to represent resources.",
+      "type": "object",
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "attributes": {
+          "$ref": "#/definitions/attributes"
+        },
+        "relationships": {
+          "$ref": "#/definitions/relationships"
+        },
+        "links": {
+          "$ref": "#/definitions/links"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pagination": {
+      "type": "object",
+      "properties": {
+        "first": {
+          "description": "The first page of data",
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last": {
+          "description": "The last page of data",
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prev": {
+          "description": "The previous page of data",
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next": {
+          "description": "The next page of data",
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "jsonapi": {
+      "description": "An object describing the server's implementation",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      },
+      "additionalProperties": false
+    },
+    "location": {
+      "type": "object",
+      "oneOf": {
+        "description": "\"Resource objects\" appear in a JSON API document to represent resources.",
+        "type": "object",
+        "required": [
+          "type",
+          "id"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/definitions/attributes"
+          },
+          "relationships": {
+            "$ref": "#/definitions/relationships"
+          },
+          "links": {
+            "$ref": "#/definitions/links"
+          },
+          "meta": {
+            "$ref": "#/definitions/meta"
+          }
+        },
+        "additionalProperties": false
+      },
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "location"
+        },
+        "id": {
+          "type": "id",
+          "description": "Location's ID"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the location"
+            },
+            "code": {
+              "type": "string",
+              "description": "Code of the location"
+            }
+          }
+        },
+        "links": {
+          "type": "object",
+          "properties": {
+            "collection": {
+              "type": "url",
+              "description": "API address of collection in which this resource belongs."
+            },
+            "self": {
+              "type": "url",
+              "description": "API address of this resource."
+            },
+            "manage": {
+              "type": "url",
+              "description": "UI address to manage this location."
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "publication": {
+              "$ref": "#/definitions/relationshipToOne"
+            },
+            "timezone": {
+              "$ref": "#/definitions/relationshipToOne"
+            },
+            "channels": {
+              "$ref": "#/definitions/relationshipToMany"
+            },
+            "tags": {
+              "$ref": "#/definitions/relationshipToMany"
+            }
+          }
+        }
+      }
+    },
+    "response_one": {
+      "oneOf": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/definitions/data"
+          },
+          "included": {
+            "description": "To reduce the number of HTTP requests, servers **MAY** allow responses that include related resources along with the requested primary resources. Such responses are called \"compound documents\".",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/resource"
+            },
+            "uniqueItems": true
+          },
+          "meta": {
+            "$ref": "#/definitions/meta"
+          },
+          "links": {
+            "description": "Link members related to the primary data.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/links"
+              },
+              {
+                "$ref": "#/definitions/pagination"
+              }
+            ]
+          },
+          "jsonapi": {
+            "$ref": "#/definitions/jsonapi"
+          }
+        },
+        "additionalProperties": false
+      },
+      "properties": {
+        "links": {
+          "oneOf": {
+            "$ref": null
+          }
+        },
+        "data": {
+          "type": "object"
+        }
+      }
+    },
+    "response_many": {
+      "oneOf": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/definitions/data"
+          },
+          "included": {
+            "description": "To reduce the number of HTTP requests, servers **MAY** allow responses that include related resources along with the requested primary resources. Such responses are called \"compound documents\".",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/resource"
+            },
+            "uniqueItems": true
+          },
+          "meta": {
+            "$ref": "#/definitions/meta"
+          },
+          "links": {
+            "description": "Link members related to the primary data.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/links"
+              },
+              {
+                "$ref": "#/definitions/pagination"
+              }
+            ]
+          },
+          "jsonapi": {
+            "$ref": "#/definitions/jsonapi"
+          }
+        },
+        "additionalProperties": false
+      },
+      "properties": {
+        "data": {
+          "type": "array"
+        }
+      }
+    }
+  },
+  "paths": {
+    "/channels": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/locations": {
+      "get": {
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/location"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/locations/{location_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/location"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
